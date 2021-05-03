@@ -1,7 +1,13 @@
 package me.joost.Physonomy.api;
 
 import java.util.List;
+import java.util.UUID;
 
+import me.joost.Physonomy.Physonomy;
+import me.joost.Physonomy.api.exception.funds.NoBankAccountException;
+import me.joost.Physonomy.api.exception.funds.NotEnoughFundsException;
+import me.joost.Physonomy.eco.bank.Bank;
+import me.joost.Physonomy.eco.bank.BankManager;
 import org.bukkit.OfflinePlayer;
 
 import me.joost.Physonomy.data.Configuration;
@@ -10,27 +16,65 @@ import net.milkbowl.vault.economy.EconomyResponse;
 
 public class VaultIntegration implements Economy{
 
+	private BankManager bm = Physonomy.getPlugin(Physonomy.class).banks;
+	private UUID fromString(String player){
+		return bm.getFromString(player);
+	}
+
 	@Override
 	public EconomyResponse bankBalance(String player) {
-		return null;
+		UUID u = fromString(player);
+		if(u==null) { return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not exist"); }
+		Bank b = bm.getBankFor(u);
+		if(b==null) { return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not have a bankaccount"); }
+		try {
+			return new EconomyResponse(0, b.getBalance(u), EconomyResponse.ResponseType.SUCCESS, "");
+		} catch (NoBankAccountException e) {
+			return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not have a bankaccount");
+		}
 	}
 
 	@Override
-	public EconomyResponse bankDeposit(String arg0, double arg1) {
-		// TODO Auto-generated method stub
-		return null;
+	public EconomyResponse bankDeposit(String player, double amount) {
+		UUID u = fromString(player);
+		if(u==null) { return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not exist"); }
+		Bank b = bm.getBankFor(u);
+		if(b==null) { return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not have a bankaccount"); }
+		try {
+			b.depositToPlayer(u, amount);
+			return new EconomyResponse(amount, b.getBalance(u), EconomyResponse.ResponseType.SUCCESS, "");
+		} catch (NoBankAccountException e) {
+			return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not have a bankaccount");
+		}
 	}
 
 	@Override
-	public EconomyResponse bankHas(String arg0, double arg1) {
-		// TODO Auto-generated method stub
-		return null;
+	public EconomyResponse bankHas(String player, double amount) {
+		UUID u = fromString(player);
+		if(u==null) { return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not exist"); }
+		Bank b = bm.getBankFor(u);
+		if(b==null) { return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not have a bankaccount"); }
+		try {
+			return new EconomyResponse(amount, b.getBalance(u), EconomyResponse.ResponseType.SUCCESS, "");
+		} catch (NoBankAccountException e) {
+			return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "");
+		}
 	}
 
 	@Override
-	public EconomyResponse bankWithdraw(String arg0, double arg1) {
-		// TODO Auto-generated method stub
-		return null;
+	public EconomyResponse bankWithdraw(String player, double amount) {
+		UUID u = fromString(player);
+		if(u==null) { return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not exist"); }
+		Bank b = bm.getBankFor(u);
+		if(b==null) { return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not have a bankaccount"); }
+		try {
+			b.withdrawFromUser(u, amount);
+			return new EconomyResponse(amount, b.getBalance(u), EconomyResponse.ResponseType.SUCCESS, "");
+		} catch (NotEnoughFundsException e) {
+			return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not have enough funds");
+		} catch (NoBankAccountException e) {
+			return new EconomyResponse(0, 0, EconomyResponse.ResponseType.FAILURE, "Player does not have a bankaccount");
+		}
 	}
 
 	@Override

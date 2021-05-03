@@ -33,12 +33,12 @@ public class Configuration {
 			new YAMLConnection().loadAll();
 		}
 	}
-	
-	
-	public static double MIN_MONEY;
-	public static double MAX_MONEY;
+
 	public static double MAX_DEBT_BANK; // If reached players will hold their money but the bank owner(s) will no longer have access to any funds
-	
+	public static boolean CONFIRM_CREDIT_TRANSACTION; // Player must confirm that they want to use credit when they don't have enough funds
+
+	public static boolean MUST_ACCEPT_LOAN; // Player must confirm loan
+
 	public static boolean INTEGRATE_TO_VAULT;
 	
 	public static String CURRENCY_NAME_SINGULAR;

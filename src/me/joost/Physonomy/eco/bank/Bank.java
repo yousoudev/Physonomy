@@ -3,8 +3,11 @@ package me.joost.Physonomy.eco.bank;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.UUID;
 
+import me.joost.Physonomy.api.exception.funds.NoBankAccountException;
+import me.joost.Physonomy.api.exception.funds.NotEnoughFundsException;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import me.joost.Physonomy.Physonomy;
@@ -15,7 +18,8 @@ public class Bank {
 	private Physonomy api = Physonomy.getPlugin(Physonomy.class);
 
 	private List<UUID> owner;
-	private List<BankAccount> accounts;
+	private HashMap<UUID, BankAccount> accounts;
+	private HashMap<UUID, Credit> creditAccounts;
 	private HashMap<UUID, Double> loans;
 	private String bankName;
 	private double bankBalance;
@@ -27,12 +31,14 @@ public class Bank {
 	private String creditTime;
 	private int creditInterest;
 	private double maxDebt;
+	private double maxCredit;
 	
-	public Bank(List<UUID> owner, String bankName, double bankBalance, List<BankAccount> accounts, HashMap<UUID, Double> loans, double interest, boolean allowSavings, boolean allowCredit, String creditTime, int creditInterest, double maxDebt) {
+	public Bank(List<UUID> owner, String bankName, HashMap<UUID, Credit> creditAccounts, double bankBalance, HashMap<UUID, BankAccount> accounts, HashMap<UUID, Double> loans, double interest, boolean allowSavings, boolean allowCredit, String creditTime, int creditInterest, double maxDebt, double maxCredit) {
 		this.setOwner(owner);
 		this.setBankName(bankName);
 		this.setBankBalance(bankBalance);
 		this.setAccounts(accounts);
+		this.creditAccounts = creditAccounts;
 		this.loans = loans;
 		this.setInterest(interest);
 		this.setAllowSavings(allowSavings);
@@ -40,10 +46,11 @@ public class Bank {
 		this.setCreditTime(creditTime);
 		this.setCreditInterest(creditInterest);
 		this.setMaxDebt(maxDebt);
+		this.setMaxCredit(maxCredit);
 		
 		int time = TimeUtil.StringToTime(creditTime);
 		if(time > 0) {
-			
+
 			new BukkitRunnable() {
 				public void run() {
 					if(!loans.isEmpty()) {
@@ -66,6 +73,70 @@ public class Bank {
 		loans = newLoans;
 	}
 
+	public UUID getCredit(Credit credit){
+		for(Entry<UUID, Credit> cre : creditAccounts.entrySet()){
+			if(cre.getValue().equals(credit)){
+				return cre.getKey();
+			}
+		}
+		return null;
+	}
+
+	public double getBalance(UUID uuid) throws NoBankAccountException{
+		if(accounts.containsKey(uuid)){
+			BankAccount account = accounts.get(uuid);
+			return account.getBalance();
+		}else{
+			throw new NoBankAccountException("User does not have a bank account with " + bankName);
+		}
+	}
+
+	public double getBalanceMinusDebt(UUID uuid) throws NoBankAccountException{
+		return getBalance(uuid)-getTotalDebt(uuid);
+	}
+
+	public double getTotalDebt(UUID uuid) throws NoBankAccountException{
+		double total = 0;
+		if(accounts.containsKey(uuid)){
+			BankAccount account = accounts.get(uuid);
+			if(creditAccounts.containsKey(uuid)){
+				Set<Double> debt = creditAccounts.get(uuid).getDebt().keySet();
+
+				for(Double d : debt){
+					total += d;
+				}
+			}
+
+			return total;
+		}else{
+			throw new NoBankAccountException("User does not have a bank account with " + bankName);
+		}
+	}
+
+	public void withdrawFromUser(UUID uuid, double amount) throws NotEnoughFundsException, NoBankAccountException{
+		if(accounts.containsKey(uuid)){
+			BankAccount account = accounts.get(uuid);
+
+			if(account.getBalance()<amount){
+				throw new NotEnoughFundsException("User is " + (amount-account.getBalance()) + " short");
+			}else{
+				account.setBalance(account.getBalance()-amount);
+			}
+		}else{
+			throw new NoBankAccountException("User does not have a bank account with " + bankName);
+		}
+	}
+
+	public void depositToPlayer(UUID uuid, double amount) throws NoBankAccountException{
+		if(accounts.containsKey(uuid)){
+			BankAccount account = accounts.get(uuid);
+
+			account.setBalance(account.getBalance()+amount);
+		}else{
+			throw new NoBankAccountException("User does not have a bank account with " + bankName);
+		}
+	}
+
 	public List<UUID> getOwner() {
 		return owner;
 	}
@@ -74,11 +145,11 @@ public class Bank {
 		this.owner = owner;
 	}
 
-	public List<BankAccount> getAccounts() {
+	public HashMap<UUID, BankAccount> getAccounts() {
 		return accounts;
 	}
 
-	public void setAccounts(List<BankAccount> accounts) {
+	public void setAccounts(HashMap<UUID, BankAccount> accounts) {
 		this.accounts = accounts;
 	}
 
@@ -176,5 +247,21 @@ public class Bank {
 
 	public void setBankBalance(double bankBalance) {
 		this.bankBalance = bankBalance;
+	}
+
+	public double getMaxCredit(){
+		return maxCredit;
+	}
+
+	public void setMaxCredit(double maxCredit){
+		this.maxCredit = maxCredit;
+	}
+
+	public HashMap<UUID, Credit> getCreditAccounts() {
+		return creditAccounts;
+	}
+
+	public void setCreditAccounts(HashMap<UUID, Credit> creditAccounts) {
+		this.creditAccounts = creditAccounts;
 	}
 }

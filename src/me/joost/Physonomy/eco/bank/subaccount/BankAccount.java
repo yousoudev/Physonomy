@@ -31,4 +31,8 @@ public class BankAccount {
 	public double getBalance() {
 		return balance;
 	}
+
+	public void setBalance(double balance){
+		this.balance = balance;
+	}
 }
